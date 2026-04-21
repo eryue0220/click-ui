@@ -396,6 +396,337 @@ describe('DateTimeRangePicker', () => {
     });
   });
 
+  describe('setting a default active tab', () => {
+    beforeEach(() => {
+      vi.setSystemTime(new Date('07-04-2020 11:30 AM'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('defaults to start date tab when not provided', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId } = renderCUI(
+        <DateTimeRangePicker onSelectDateRange={handleSelectDate} />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+
+      expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+        'data-state',
+        'inactive'
+      );
+    });
+
+    it('activates the start date tab when defaultActiveTab="startDate"', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId } = renderCUI(
+        <DateTimeRangePicker
+          defaultActiveTab="startDate"
+          onSelectDateRange={handleSelectDate}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+
+      expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+        'data-state',
+        'inactive'
+      );
+    });
+
+    it('activates the end date tab when defaultActiveTab="endDate"', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId } = renderCUI(
+        <DateTimeRangePicker
+          defaultActiveTab="endDate"
+          onSelectDateRange={handleSelectDate}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+
+      expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+        'data-state',
+        'inactive'
+      );
+    });
+
+    it('applies the clicked date to the end date when defaultActiveTab="endDate"', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId, getByText } = renderCUI(
+        <DateTimeRangePicker
+          defaultActiveTab="endDate"
+          onSelectDateRange={handleSelectDate}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+      await userEvent.click(getByText('15'));
+
+      expect(getByTestId('datetimepicker-input').textContent).toBe(
+        'start date – Jul 15, 12:00 pm'
+      );
+    });
+
+    it('allows switching tabs after opening with defaultActiveTab="endDate"', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId } = renderCUI(
+        <DateTimeRangePicker
+          defaultActiveTab="endDate"
+          onSelectDateRange={handleSelectDate}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+      await userEvent.click(getByTestId('tabbed-calendar-trigger-start'));
+
+      expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+        'data-state',
+        'inactive'
+      );
+    });
+
+    it('honors defaultActiveTab when rendered alongside a predefinedTimesList', async () => {
+      const handleSelectDate = vi.fn();
+      const predefinedTimesList = getPredefinedTimePeriodsForDateTimePicker();
+
+      const { getByTestId, getByText } = renderCUI(
+        <DateTimeRangePicker
+          defaultActiveTab="endDate"
+          onSelectDateRange={handleSelectDate}
+          predefinedTimesList={predefinedTimesList}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+      await userEvent.click(getByText('Since a specific date and time'));
+
+      expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+    });
+
+    describe('useEffect syncing defaultActiveTab', () => {
+      it('updates the active tab when defaultActiveTab prop changes after mount', async () => {
+        const handleSelectDate = vi.fn();
+
+        const { getByTestId, rerender } = renderCUI(
+          <DateTimeRangePicker
+            defaultActiveTab="startDate"
+            onSelectDateRange={handleSelectDate}
+          />
+        );
+
+        await userEvent.click(getByTestId('datetimepicker-input'));
+
+        expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+          'data-state',
+          'active'
+        );
+
+        rerender(
+          <DateTimeRangePicker
+            defaultActiveTab="endDate"
+            onSelectDateRange={handleSelectDate}
+          />
+        );
+
+        expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+          'data-state',
+          'active'
+        );
+        expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+          'data-state',
+          'inactive'
+        );
+      });
+
+      it('preserves user-selected tab when defaultActiveTab is re-rendered with the same value', async () => {
+        const handleSelectDate = vi.fn();
+
+        const { getByTestId, rerender } = renderCUI(
+          <DateTimeRangePicker
+            defaultActiveTab="startDate"
+            onSelectDateRange={handleSelectDate}
+          />
+        );
+
+        await userEvent.click(getByTestId('datetimepicker-input'));
+        await userEvent.click(getByTestId('tabbed-calendar-trigger-end'));
+
+        expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+          'data-state',
+          'active'
+        );
+
+        rerender(
+          <DateTimeRangePicker
+            defaultActiveTab="startDate"
+            onSelectDateRange={handleSelectDate}
+          />
+        );
+
+        expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+          'data-state',
+          'active'
+        );
+        expect(getByTestId('tabbed-calendar-trigger-start')).toHaveAttribute(
+          'data-state',
+          'inactive'
+        );
+      });
+
+      it('keeps the active tab stable when defaultActiveTab prop is set to the same value', async () => {
+        const handleSelectDate = vi.fn();
+
+        const { getByTestId, rerender } = renderCUI(
+          <DateTimeRangePicker
+            defaultActiveTab="endDate"
+            onSelectDateRange={handleSelectDate}
+          />
+        );
+
+        await userEvent.click(getByTestId('datetimepicker-input'));
+
+        expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+          'data-state',
+          'active'
+        );
+
+        rerender(
+          <DateTimeRangePicker
+            defaultActiveTab="endDate"
+            onSelectDateRange={handleSelectDate}
+          />
+        );
+
+        expect(getByTestId('tabbed-calendar-trigger-end')).toHaveAttribute(
+          'data-state',
+          'active'
+        );
+      });
+    });
+  });
+
+  describe('closing the date picker on selecting a date range', () => {
+    beforeEach(() => {
+      vi.setSystemTime(new Date('07-04-2020 11:30 AM'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('keeps the picker open by default once both start and end dates are selected', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId, getByText, queryByTestId } = renderCUI(
+        <DateTimeRangePicker onSelectDateRange={handleSelectDate} />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+
+      await userEvent.click(getByText('4'));
+      await userEvent.click(getByTestId('tabbed-calendar-trigger-end'));
+      await userEvent.click(getByText('10'));
+
+      expect(handleSelectDate).toHaveBeenCalledOnce();
+      expect(queryByTestId('datepicker-calendar-container')).toBeVisible();
+    });
+
+    it('closes the picker when closeOnDateRangeSelected is true and both dates are selected', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId, getByText, queryByTestId } = renderCUI(
+        <DateTimeRangePicker
+          closeOnDateRangeSelected
+          onSelectDateRange={handleSelectDate}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+
+      await userEvent.click(getByText('4'));
+      await userEvent.click(getByTestId('tabbed-calendar-trigger-end'));
+      await userEvent.click(getByText('10'));
+
+      expect(queryByTestId('datepicker-calendar-container')).not.toBeInTheDocument();
+    });
+
+    it('closes the picker when closeOnDateRangeSelected is true and start date is selected after end date', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId, getByText, queryByTestId } = renderCUI(
+        <DateTimeRangePicker
+          closeOnDateRangeSelected
+          onSelectDateRange={handleSelectDate}
+        />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+
+      await userEvent.click(getByTestId('tabbed-calendar-trigger-end'));
+      await userEvent.click(getByText('10'));
+      await userEvent.click(getByTestId('tabbed-calendar-trigger-start'));
+      await userEvent.click(getByText('4'));
+
+      expect(queryByTestId('datepicker-calendar-container')).not.toBeInTheDocument();
+    });
+
+    it('keeps the picker open when only the start date has been selected', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId, getByText, queryByTestId } = renderCUI(
+        <DateTimeRangePicker onSelectDateRange={handleSelectDate} />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+      await userEvent.click(getByText('4'));
+
+      expect(handleSelectDate).not.toHaveBeenCalled();
+      expect(queryByTestId('datepicker-calendar-container')).toBeVisible();
+    });
+
+    it('keeps the picker open when only the end date has been selected', async () => {
+      const handleSelectDate = vi.fn();
+
+      const { getByTestId, getByText, queryByTestId } = renderCUI(
+        <DateTimeRangePicker onSelectDateRange={handleSelectDate} />
+      );
+
+      await userEvent.click(getByTestId('datetimepicker-input'));
+      await userEvent.click(getByTestId('tabbed-calendar-trigger-end'));
+      await userEvent.click(getByText('10'));
+
+      expect(handleSelectDate).not.toHaveBeenCalled();
+      expect(queryByTestId('datepicker-calendar-container')).toBeVisible();
+    });
+  });
+
   describe('predefined times', () => {
     beforeEach(() => {
       vi.setSystemTime(new Date('07-04-2020 11:30 AM'));

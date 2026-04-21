@@ -44,6 +44,8 @@ type OpenDirection = 'left' | 'right';
 
 // left value of 259px is the width of the PredefinedTimesContainer + 1 pixel for border
 const CalendarRendererContainer = styled.div<{ $openDirection?: OpenDirection }>`
+  background: ${({ theme }) =>
+    `${theme.click.datePicker.dateOption.color.background.default}`};
   border: ${({ theme }) =>
     `${theme.click.datePicker.dateOption.stroke} solid ${theme.click.datePicker.dateOption.color.background.range}`};
   border-radius: ${({ theme }) => theme.click.datePicker.dateOption.radii.default};
@@ -97,7 +99,6 @@ type SetDate = (date: Date) => void;
 interface CalendarProps {
   calendarBody: Body;
   calendarType: CalendarType;
-  closeDatePicker?: () => void;
   futureDatesDisabled: boolean;
   futureStartDatesDisabled: boolean;
   maxRangeLength: number;
@@ -376,10 +377,6 @@ const parseTimeString = (
     return { isValid: false };
   }
 
-  if (!parsedDate.isValid()) {
-    return { isValid: false };
-  }
-
   return { isValid: true, parsedDate };
 };
 
@@ -566,10 +563,10 @@ const TimeInput = ({ date, setDate, shouldShowSeconds }: TimeInputProps) => {
   );
 };
 
-type Tab = 'startDate' | 'endDate';
+export type Tab = 'startDate' | 'endDate';
 
 interface TabbedCalendarProps {
-  closeDatePicker: () => void;
+  defaultActiveTab?: Tab;
   endDate: Date | undefined;
   futureDatesDisabled: boolean;
   futureStartDatesDisabled: boolean;
@@ -582,7 +579,7 @@ interface TabbedCalendarProps {
 }
 
 const TabbedCalendar = ({
-  closeDatePicker,
+  defaultActiveTab = 'startDate',
   endDate,
   futureDatesDisabled,
   futureStartDatesDisabled,
@@ -593,7 +590,11 @@ const TabbedCalendar = ({
   shouldShowSeconds,
   startDate,
 }: TabbedCalendarProps) => {
-  const [activeTab, setActiveTab] = useState<Tab>('startDate');
+  const [activeTab, setActiveTab] = useState<Tab>(defaultActiveTab);
+
+  useEffect(() => {
+    setActiveTab(defaultActiveTab);
+  }, [defaultActiveTab]);
 
   const handleTabChange = useCallback((newTab: string) => {
     setActiveTab(newTab as Tab);
@@ -655,7 +656,6 @@ const TabbedCalendar = ({
             <Calendar
               calendarBody={body}
               calendarType="startDate"
-              closeDatePicker={closeDatePicker}
               endDate={endDate}
               futureDatesDisabled={futureDatesDisabled}
               futureStartDatesDisabled={futureStartDatesDisabled}
@@ -677,7 +677,6 @@ const TabbedCalendar = ({
             <Calendar
               calendarBody={body}
               calendarType="endDate"
-              closeDatePicker={closeDatePicker}
               endDate={endDate}
               futureDatesDisabled={futureDatesDisabled}
               futureStartDatesDisabled={futureStartDatesDisabled}
@@ -698,8 +697,10 @@ const TabbedCalendar = ({
 };
 
 export interface DateTimeRangePickerProps {
-  endDate?: Date;
+  closeOnDateRangeSelected?: boolean;
+  defaultActiveTab?: Tab;
   disabled?: boolean;
+  endDate?: Date;
   futureDatesDisabled?: boolean;
   futureStartDatesDisabled?: boolean;
   onSelectDateRange: (selectedStartDate: Date, selectedEndDate: Date) => void;
@@ -712,9 +713,10 @@ export interface DateTimeRangePickerProps {
 }
 
 export const DateTimeRangePicker = ({
-  endDate,
-  startDate,
+  closeOnDateRangeSelected = false,
+  defaultActiveTab,
   disabled = false,
+  endDate,
   futureDatesDisabled = false,
   futureStartDatesDisabled = false,
   maxRangeLength = -1,
@@ -723,6 +725,7 @@ export const DateTimeRangePicker = ({
   placeholder = 'start date – end date',
   predefinedTimesList,
   shouldShowSeconds,
+  startDate,
 }: DateTimeRangePickerProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [selectedStartDate, setSelectedStartDate] = useState<Date>();
@@ -790,6 +793,10 @@ export const DateTimeRangePicker = ({
 
         if (selectedEndDate) {
           onSelectDateRange(selectedDate, selectedEndDate);
+
+          if (closeOnDateRangeSelected) {
+            closeDatePicker();
+          }
         }
       }
 
@@ -798,6 +805,10 @@ export const DateTimeRangePicker = ({
 
         if (selectedStartDate) {
           onSelectDateRange(selectedStartDate, selectedDate);
+
+          if (closeOnDateRangeSelected) {
+            closeDatePicker();
+          }
         }
       }
     },
@@ -858,7 +869,7 @@ export const DateTimeRangePicker = ({
                   ref={calendarContainerRef}
                 >
                   <TabbedCalendar
-                    closeDatePicker={closeDatePicker}
+                    defaultActiveTab={defaultActiveTab}
                     endDate={selectedEndDate}
                     futureDatesDisabled={futureDatesDisabled}
                     futureStartDatesDisabled={futureStartDatesDisabled}
@@ -875,7 +886,7 @@ export const DateTimeRangePicker = ({
           ) : (
             <>
               <TabbedCalendar
-                closeDatePicker={closeDatePicker}
+                defaultActiveTab={defaultActiveTab}
                 endDate={selectedEndDate}
                 futureDatesDisabled={futureDatesDisabled}
                 futureStartDatesDisabled={futureStartDatesDisabled}
